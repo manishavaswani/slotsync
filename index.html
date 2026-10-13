@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="SlotSync — a static office-hours scheduler for professors. Configure weekly blocks once, share one booking link; students pick a slot and send a request. No backend, no accounts.">
+  <title>SlotSync — Office Hours Scheduler</title>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><rect width='16' height='16' fill='%23a4543a'/><text x='3' y='12' font-size='11' font-family='Georgia' fill='%23faf6ef'>S</text></svg>">
+</head>
+<body>
+  <header class="site-header">
+    <div class="wrap">
+      <h1 class="site-title">SlotSync</h1>
+      <p class="site-tagline" id="header-tagline">Office hours scheduling for professors — configure your weekly blocks once, share one booking link, and let students request slots. Everything lives in the link itself: no server, no accounts, nothing leaves your browser.</p>
+    </div>
+  </header>
+
+  <main class="wrap">
+
+    <!-- ================= PROFESSOR VIEW ================= -->
+    <div id="professor-view">
+
+      <section class="panel-section" aria-labelledby="h-identity">
+        <h2 id="h-identity">1 · About you</h2>
+        <p class="panel-intro">Shown at the top of your booking page. The reply email receives students' booking requests.</p>
+        <div class="form-grid">
+          <div>
+            <label class="field-label" for="prof-name">Your name</label>
+            <input type="text" id="prof-name" class="text-input" placeholder="Dr. Ada Osei" autocomplete="name">
+          </div>
+          <div>
+            <label class="field-label" for="prof-course">Course(s)</label>
+            <input type="text" id="prof-course" class="text-input" placeholder="ECON 201 · ECON 340">
+          </div>
+          <div>
+            <label class="field-label" for="prof-email">Reply email</label>
+            <input type="email" id="prof-email" class="text-input" placeholder="aosei@university.edu" autocomplete="email">
+          </div>
+        </div>
+      </section>
+
+      <section class="panel-section" aria-labelledby="h-blocks">
+        <h2 id="h-blocks">2 · Weekly office-hour blocks</h2>
+        <p class="panel-intro">Each block repeats every week of the semester and is split into bookable slots of the chosen length. Add as many blocks as you like.</p>
+
+        <div class="hint-box">
+          <strong>About locations &amp; meeting links.</strong> SlotSync has no accounts and no calendar/Zoom/Teams/Meet integrations — there is no server to hold them. Instead, create a <em>standing (recurring) meeting</em> in Zoom, Teams, or Meet once, copy its link, and paste it here. SlotSync attaches the right link to every booking for that block. For in-person hours, just type the room.
+        </div>
+
+        <div id="blocks-list"></div>
+        <div class="button-row">
+          <button id="block-add" class="btn">+ Add a weekly block</button>
+        </div>
+      </section>
+
+      <section class="panel-section" aria-labelledby="h-semester">
+        <h2 id="h-semester">3 · Semester &amp; exceptions</h2>
+        <div class="form-grid">
+          <div>
+            <label class="field-label" for="sem-start">Semester start</label>
+            <input type="date" id="sem-start" class="text-input">
+          </div>
+          <div>
+            <label class="field-label" for="sem-end">Semester end</label>
+            <input type="date" id="sem-end" class="text-input">
+          </div>
+        </div>
+
+        <h3>Blackout dates</h3>
+        <p class="hint">No office hours on these dates (holidays, conferences, travel). Pick a date and add it, or import your calendar below to get suggestions.</p>
+        <div class="inline-add">
+          <input type="date" id="blackout-date" class="text-input">
+          <button id="blackout-add" class="btn">Add blackout</button>
+        </div>
+        <ul class="chip-list" id="blackout-list"></ul>
+
+        <h3>Per-week overrides</h3>
+        <p class="hint">Cancel an entire week (fall break, conference travel) or move one block to a different day/time for a single week.</p>
+        <div class="inline-add wrap-items">
+          <select id="override-week" class="inline-select"></select>
+          <select id="override-type" class="inline-select">
+            <option value="cancel">Cancel that whole week</option>
+            <option value="move">Move one block that week…</option>
+          </select>
+          <select id="override-block" class="inline-select hidden"></select>
+          <select id="override-day" class="inline-select hidden">
+            <option value="1">Monday</option><option value="2">Tuesday</option>
+            <option value="3">Wednesday</option><option value="4">Thursday</option>
+            <option value="5">Friday</option><option value="6">Saturday</option>
+            <option value="0">Sunday</option>
+          </select>
+          <input type="time" id="override-start" class="text-input inline-time hidden">
+          <input type="time" id="override-end" class="text-input inline-time hidden">
+          <button id="override-add" class="btn">Add override</button>
+        </div>
+        <ul class="chip-list" id="override-list"></ul>
+
+        <h3>Import your calendar (.ics) — optional</h3>
+        <p class="hint">Upload an export of your existing calendar (<code>.ics</code> from Google/Outlook/Apple). SlotSync scans it for events that collide with your blocks during the semester and suggests them as blackout dates. The file is parsed locally in your browser and never uploaded anywhere.</p>
+        <input type="file" id="ics-import" accept=".ics,text/calendar">
+        <div id="ics-suggestions" class="hidden"></div>
+      </section>
+
+      <section class="panel-section" aria-labelledby="h-rules">
+        <h2 id="h-rules">4 · Booking rules</h2>
+        <div class="form-grid">
+          <div>
+            <label class="field-label" for="rule-cap">Max bookings per student per week</label>
+            <input type="number" id="rule-cap" class="text-input" min="1" max="10" value="1">
+            <p class="hint">Fairness cap. It is shown to students and enforced against the claimed-slots list embedded in the link (there is no database, so the professor enforces it when confirming).</p>
+          </div>
+          <div>
+            <label class="field-label" for="rule-horizon">How far ahead students may book (days)</label>
+            <input type="number" id="rule-horizon" class="text-input" min="1" max="365" value="21">
+          </div>
+          <div>
+            <label class="field-label" for="rule-buffer">Buffer between slots (minutes)</label>
+            <input type="number" id="rule-buffer" class="text-input" min="0" max="60" step="5" value="0">
+          </div>
+        </div>
+      </section>
+
+      <section class="panel-section" aria-labelledby="h-share">
+        <h2 id="h-share">5 · Share &amp; export</h2>
+        <p class="panel-intro">Your entire configuration is encoded into the booking link itself (<code>#book=…</code>) — the link <em>is</em> the database. Post it on your syllabus or LMS. If you change anything, copy a fresh link; old links keep the old schedule.</p>
+
+        <div class="hint-box">
+          <strong>How booking works without a backend.</strong> A student picks a slot and gets (1) a prefilled email to you with the slot details, (2) a calendar file for themselves. Nothing is recorded automatically — <em>you</em> confirm by replying. To make a taken slot disappear for future visitors, mark it as claimed below and re-share the updated link.
+        </div>
+
+        <div class="button-row">
+          <button id="copy-link" class="btn primary">Copy booking link</button>
+          <button id="preview-link" class="btn">Open booking page preview</button>
+          <button id="download-all-ics" class="btn">Add all my office hours to my calendar (.ics)</button>
+        </div>
+        <label class="field-label" for="booking-link-out">Your booking link</label>
+        <textarea id="booking-link-out" rows="3" readonly spellcheck="false" placeholder="Configure the sections above, then copy your link."></textarea>
+        <p class="error-line hidden" id="share-error" role="alert"></p>
+
+        <h3>Claimed slots (optional)</h3>
+        <p class="hint">After a student books and you confirm, add their slot here so the next person opening your link sees it as taken. Then copy and share the link again.</p>
+        <div class="inline-add wrap-items">
+          <input type="date" id="claim-date" class="text-input">
+          <input type="time" id="claim-time" class="text-input inline-time">
+          <input type="text" id="claim-name" class="text-input inline-name" placeholder="Student name or email">
+          <button id="claim-add" class="btn">Mark as claimed</button>
+        </div>
+        <ul class="chip-list" id="claim-list"></ul>
+      </section>
+    </div>
+
+    <!-- ================= STUDENT VIEW ================= -->
+    <div id="student-view" class="hidden">
+      <section class="panel-section">
+        <h2 id="stu-heading">Office hours</h2>
+        <p class="panel-intro" id="stu-sub"></p>
+        <p class="hint" id="stu-rules"></p>
+
+        <div class="week-nav">
+          <button id="week-prev" class="btn ghost">← Previous week</button>
+          <span id="week-label" class="week-label"></span>
+          <button id="week-next" class="btn ghost">Next week →</button>
+        </div>
+
+        <div id="slot-grid" aria-live="polite"></div>
+        <p class="hint" id="stu-note">No database is involved: picking a slot prepares an email request to the professor plus a calendar entry for you. Your slot is confirmed when the professor replies.</p>
+      </section>
+
+      <section class="panel-section hidden" id="book-panel" aria-labelledby="h-book">
+        <h2 id="h-book">Request this slot</h2>
+        <p class="panel-intro" id="book-slot-label"></p>
+        <div class="form-grid">
+          <div>
+            <label class="field-label" for="stu-name">Your name</label>
+            <input type="text" id="stu-name" class="text-input" autocomplete="name">
+          </div>
+          <div>
+            <label class="field-label" for="stu-email">Your email</label>
+            <input type="email" id="stu-email" class="text-input" autocomplete="email">
+          </div>
+          <div>
+            <label class="field-label" for="stu-topic">Topic (optional)</label>
+            <input type="text" id="stu-topic" class="text-input" placeholder="Problem set 3, question 2">
+          </div>
+        </div>
+        <div class="button-row">
+          <button id="book-confirm" class="btn primary">Prepare my booking</button>
+          <button id="book-cancel" class="btn ghost">Back to slots</button>
+        </div>
+        <p class="error-line hidden" id="book-error" role="alert"></p>
+      </section>
+
+      <section class="panel-section hidden" id="book-result" aria-labelledby="h-result">
+        <h2 id="h-result">Almost done — send your request</h2>
+        <p class="panel-intro">SlotSync is a static page, so nothing is sent or stored automatically. Finish in two steps: <strong>1)</strong> send the prefilled request email, and <strong>2)</strong> save the event to your own calendar. The professor confirms by replying.</p>
+        <div class="hint-box" id="result-summary"></div>
+        <div class="button-row">
+          <a id="out-mailto" class="btn primary" href="#">1 · Open request email</a>
+          <button id="out-ics" class="btn">2 · Download calendar file (.ics)</button>
+        </div>
+        <div class="button-row">
+          <a id="out-google" class="btn" href="#" target="_blank" rel="noopener">Add to Google Calendar</a>
+          <a id="out-outlook" class="btn" href="#" target="_blank" rel="noopener">Add to Outlook</a>
+          <button id="book-again" class="btn ghost">Pick another slot</button>
+        </div>
+      </section>
+    </div>
+
+    <p class="error-line hidden" id="fatal-error" role="alert"></p>
+  </main>
+
+  <footer class="site-footer">
+    <div class="wrap">
+      <p>SlotSync runs entirely in your browser. The schedule configuration travels inside the booking link (<code>#book=…</code>, base64url-encoded JSON) — no server, no tracking, no accounts. Bookings are requests: the professor confirms by replying to the student's email. Calendar files are RFC 5545 <code>.ics</code> with floating local times; your calendar app renders them in your own timezone.</p>
+    </div>
+  </footer>
+
+  <script src="js/calendar.js"></script>
+  <script src="js/config.js"></script>
+  <script src="js/slots.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
